@@ -24,10 +24,10 @@ env/
 .DS_Store
 *.swp
 
-# Project-local
-data/           # datasets cache (T05)
-checkpoints/   # model weights cache
-results/raw/   # large/transient artifacts; keep results/*.jsonl committed
+# Project-local — datasets cache, model weights, large transient artifacts
+data/
+checkpoints/
+results/raw/
 *.log
 
 # Notebooks

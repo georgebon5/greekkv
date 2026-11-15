@@ -85,8 +85,12 @@ def _load_flores_from_hub(
     from datasets import load_dataset
 
     cache_dir.mkdir(parents=True, exist_ok=True)
-    ds_src = load_dataset(FLORES_DEFAULT, src_lang, split=split, cache_dir=str(cache_dir))
-    ds_tgt = load_dataset(FLORES_DEFAULT, tgt_lang, split=split, cache_dir=str(cache_dir))
+    # trust_remote_code: Muennighoff/flores200 ships a loader script. It is a
+    # well-known public mirror of the FB release; any migration to a parquet-
+    # based FLORES will drop this flag.
+    kw = dict(split=split, cache_dir=str(cache_dir), trust_remote_code=True)
+    ds_src = load_dataset(FLORES_DEFAULT, src_lang, **kw)
+    ds_tgt = load_dataset(FLORES_DEFAULT, tgt_lang, **kw)
     texts_src = _column(ds_src, ("sentence", "text"))
     texts_tgt = _column(ds_tgt, ("sentence", "text"))
     if len(texts_src) != len(texts_tgt):
