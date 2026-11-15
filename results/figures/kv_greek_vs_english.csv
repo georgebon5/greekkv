@@ -1,0 +1,7 @@
+model,label,language,tpw,n_tokens,kv_mb
+ilsp/Llama-Krikri-8B-Instruct,Krikri-8B,en,1.2687941234796212,1269,158.625
+ilsp/Llama-Krikri-8B-Instruct,Krikri-8B,el,1.528946677565933,1529,191.125
+ilsp/Meltemi-7B-Instruct-v1.5,Meltemi-7B,en,1.3724858486374267,1372,171.5
+ilsp/Meltemi-7B-Instruct-v1.5,Meltemi-7B,el,1.4288418435473678,1429,178.625
+Qwen/Qwen2.5-7B-Instruct,Qwen2.5-7B,en,1.295470770728646,1295,70.8203125
+Qwen/Qwen2.5-7B-Instruct,Qwen2.5-7B,el,5.6740923983633955,5674,310.296875
