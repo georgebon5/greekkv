@@ -35,6 +35,7 @@ dependencies = [
     # torch is needed from T07 onward to validate memory formulas against real
     # tensors and (later) to run inference. CPU wheels suffice for development.
     "torch>=2.1",
+    "matplotlib>=3.7",
 ]
 
 [project.optional-dependencies]
