@@ -4,6 +4,7 @@ from greekkv.quant.adapters import (
     KVCacheBackend,
     build_cache,
 )
+from greekkv.quant.eviction_cache import StreamingEvictionCache
 from greekkv.quant.fakequant_cache import FakeQuantCache
 from greekkv.quant.kivi_cache import KiviCache, KiviCacheConfig
 from greekkv.quant.primitives import (
@@ -24,6 +25,7 @@ __all__ = [
     "KiviCacheConfig",
     "QuantMeta",
     "QuantizedTensor",
+    "StreamingEvictionCache",
     "build_cache",
     "dequantize",
     "pack_int4",

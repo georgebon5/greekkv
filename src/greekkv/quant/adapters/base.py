@@ -29,6 +29,7 @@ SUPPORTED_SCHEMES: tuple[str, ...] = (
     "int4-fakequant",
     "int8-kivi",
     "int4-kivi",
+    "eviction-sink",
     "quanto",
     "hqq",
     "vllm-fp8",
@@ -60,7 +61,8 @@ class CacheSpec:
 
     ``scheme`` is the primary dispatch key for :func:`build_cache`. The
     remaining fields are interpreted per scheme (e.g. ``residual`` is only
-    meaningful for KIVI and HF QuantizedCache; FP16 ignores it).
+    meaningful for KIVI and HF QuantizedCache; ``n_sink`` / ``n_recent``
+    only for ``eviction-sink``; FP16 ignores most of them).
     """
 
     scheme: str
@@ -68,6 +70,8 @@ class CacheSpec:
     group_size: int = 128
     residual: int = 0
     symmetric: bool = True
+    n_sink: int = 4
+    n_recent: int = 32
 
     def __post_init__(self) -> None:
         if self.scheme not in SUPPORTED_SCHEMES:
@@ -80,6 +84,10 @@ class CacheSpec:
             raise ValueError(f"group_size must be positive, got {self.group_size}")
         if self.residual < 0:
             raise ValueError(f"residual must be non-negative, got {self.residual}")
+        if self.n_sink < 0:
+            raise ValueError(f"n_sink must be non-negative, got {self.n_sink}")
+        if self.n_recent < 0:
+            raise ValueError(f"n_recent must be non-negative, got {self.n_recent}")
 
 
 def build_cache(spec: CacheSpec, model_config: Any = None) -> KVCacheBackend:
@@ -121,6 +129,11 @@ def build_cache(spec: CacheSpec, model_config: Any = None) -> KVCacheBackend:
                 symmetric=spec.symmetric,
             )
         )
+
+    if s == "eviction-sink":
+        from greekkv.quant.eviction_cache import StreamingEvictionCache  # noqa: PLC0415
+
+        return StreamingEvictionCache(n_sink=spec.n_sink, n_recent=spec.n_recent)
 
     if s in ("quanto", "hqq"):
         if model_config is None:
