@@ -37,3 +37,39 @@ description must include its output until Actions is unblocked.
   needing a dummy commit.
 - If the account is unlocked and the workflow still has issues, that is treated
   as a real CI bug and fixed in its own PR (not folded into T02).
+
+---
+
+## ADR-0002 — `src/` layout + hatchling + ruff + pytest
+
+**Date:** 2026-11-15
+**Status:** Accepted
+
+### Context
+First tooling choice of the project. Options considered:
+- Flat layout vs `src/` layout
+- `setuptools` vs `hatchling` vs `poetry` vs `uv` as build backend
+- `ruff` vs `black + isort + flake8` for lint/format
+- `pytest` vs `unittest`
+
+### Decision
+- **`src/` layout.** Forces imports to go through the installed package. If the
+  package isn't installed, tests fail — which is the signal we want in CI. A
+  flat layout lets stale local imports sneak in and silently pass.
+- **`hatchling`** as build backend. PEP 517, zero legacy baggage, cleanest
+  config for `src/` layout, no `setup.py` / `MANIFEST.in` required.
+- **`ruff` (+ `ruff-format`).** One tool for linting, formatting, and import
+  order. Faster than `black + isort + flake8` combined and configured in a
+  single section of `pyproject.toml`. Enabled rule sets: E, F, I, B, UP, N, SIM.
+- **`pytest`.** Industry standard; `pythonpath = ["src"]` wired in
+  `pyproject.toml`.
+- **100-char line length.** Compromise between legacy 80 and pragmatic 120 for
+  evaluation code with many kwargs. `ruff-format` handles wrapping.
+
+### Consequences
+- Contributors must `pip install -e ".[dev]"` once before tests pass.
+- All configuration lives in `pyproject.toml`; no separate `setup.cfg`,
+  `.ruff.toml`, `.flake8`, `tox.ini`.
+- Future tool additions (mypy, coverage, hypothesis) extend `pyproject.toml`
+  and the `dev` optional-dependency group — no new config files.
+- `make check` is the single local entry point that mirrors CI.

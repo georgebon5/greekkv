@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Project roadmap
+    url: https://github.com/georgebon5/greekkv/milestones
+    about: Check the milestones and existing tasks before opening a new issue.

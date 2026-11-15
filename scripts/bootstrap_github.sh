@@ -56,6 +56,7 @@ LABELS=(
   "cpp|6f42c1|C++ / minillm.cpp cross-contribution"
   "planner|c2e0c6|Capacity planner web app"
   "docs|0366d6|Documentation, reports, outreach"
+  "bug|d73a4a|Something behaves unexpectedly"
 )
 
 existing_labels() {

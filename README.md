@@ -50,6 +50,14 @@ Every number in this repo must be traceable to:
 
 Any result from larger hardware than free tiers (Kaggle T4/P100, Colab T4) is labelled **estimate**, never **measurement**.
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for workflow, commit conventions, and
+the reproducibility contract. Architectural decisions are logged as ADRs in
+[`docs/DECISIONS.md`](docs/DECISIONS.md).
+
+All participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
