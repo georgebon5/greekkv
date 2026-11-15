@@ -32,6 +32,9 @@ dependencies = [
     "datasets>=2.18,<4",
     "transformers>=4.40",
     "numpy>=1.24",
+    # torch is needed from T07 onward to validate memory formulas against real
+    # tensors and (later) to run inference. CPU wheels suffice for development.
+    "torch>=2.1",
 ]
 
 [project.optional-dependencies]
