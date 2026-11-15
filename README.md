@@ -30,13 +30,17 @@ Full task list lives in [GitHub Issues](https://github.com/georgebon5/greekkv/is
 git clone https://github.com/georgebon5/greekkv.git
 cd greekkv
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+make install        # pip install -e ".[dev]"
 pre-commit install
-pytest
-ruff check .
+make check          # ruff + format + pytest (same as CI)
 ```
 
 Python 3.10 or 3.11 supported.
+
+> **Note on CI status:** The CI badge above may show red/unknown while this
+> account's GitHub Actions is temporarily unavailable (see
+> [`docs/DECISIONS.md`](docs/DECISIONS.md), ADR-0001). Every PR runs `make check`
+> locally and pastes the output into the PR description as a substitute.
 
 ## Reproducibility contract
 
