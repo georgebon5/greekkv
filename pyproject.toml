@@ -20,9 +20,12 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 # Heavy deps (torch, transformers, datasets, bitsandbytes) are added in the tasks
-# that first require them. The scaffold itself is intentionally dependency-free
-# so `pip install -e .` works on CPU-only CI without pulling multi-GB wheels.
-dependencies = []
+# that first require them. Core library deps stay tiny so `pip install -e .`
+# works on CPU-only CI without pulling multi-GB wheels.
+dependencies = [
+    "pydantic>=2.6",
+    "pyyaml>=6.0",
+]
 
 [project.optional-dependencies]
 dev = [
