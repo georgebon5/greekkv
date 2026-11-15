@@ -1,3 +1,4 @@
+from greekkv.quant.fakequant_cache import FakeQuantCache
 from greekkv.quant.primitives import (
     QuantizedTensor,
     QuantMeta,
@@ -8,6 +9,7 @@ from greekkv.quant.primitives import (
 )
 
 __all__ = [
+    "FakeQuantCache",
     "QuantMeta",
     "QuantizedTensor",
     "dequantize",
