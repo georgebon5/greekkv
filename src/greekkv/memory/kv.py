@@ -49,6 +49,8 @@ class ArchConfig:
     head_dim: int | None = None
     num_parameters: int | None = None
     vocab_size: int | None = None
+    intermediate_size: int | None = None
+    tie_word_embeddings: bool = False
 
 
 def head_dim_of(cfg: ArchConfig) -> int:
@@ -87,6 +89,7 @@ def arch_from_hf(hf_cfg: Any) -> ArchConfig:
     n_kv = _g("num_key_value_heads")
     if n_kv is None:
         n_kv = n_attn  # pre-GQA models (Llama 1/2) omit this field
+    tie = _g("tie_word_embeddings")
     return ArchConfig(
         num_hidden_layers=_g("num_hidden_layers"),
         num_attention_heads=n_attn,
@@ -95,6 +98,8 @@ def arch_from_hf(hf_cfg: Any) -> ArchConfig:
         head_dim=_g("head_dim"),
         num_parameters=_g("num_parameters"),
         vocab_size=_g("vocab_size"),
+        intermediate_size=_g("intermediate_size"),
+        tie_word_embeddings=bool(tie) if tie is not None else False,
     )
 
 
@@ -154,6 +159,42 @@ def kv_bytes(
     data_bytes = kv_elems * bits / 8
     overhead = _quant_overhead_bytes(kv_elems, bits, group_size, asymmetric)
     return math.ceil(data_bytes + overhead)
+
+
+def estimate_num_parameters(cfg: ArchConfig) -> int:
+    """Approximate parameter count from the architecture config.
+
+    Covers the common Llama/Mistral/Qwen2 recipe: tied or untied token
+    embeddings, per-layer Q/K/V/O projections (GQA-aware), a 3-matrix SwiGLU
+    MLP, and two RMS-norms per layer plus a final norm. Accuracy on real
+    checkpoints is typically within ~1% of the true count — enough for a
+    pre-flight budget check, not for billing.
+
+    Requires ``cfg.vocab_size`` and ``cfg.intermediate_size`` to be set;
+    raises :class:`ValueError` otherwise.
+    """
+    if cfg.vocab_size is None or cfg.intermediate_size is None:
+        raise ValueError("estimate_num_parameters needs cfg.vocab_size and cfg.intermediate_size")
+    v = cfg.vocab_size
+    h = cfg.hidden_size
+    layers = cfg.num_hidden_layers
+    n_attn = cfg.num_attention_heads
+    n_kv = cfg.num_key_value_heads
+    d = head_dim_of(cfg)
+    ffn = cfg.intermediate_size
+
+    embed = v * h
+    per_layer = (
+        h * n_attn * d  # Q
+        + h * n_kv * d  # K
+        + h * n_kv * d  # V
+        + n_attn * d * h  # O
+        + 3 * h * ffn  # gate, up, down (SwiGLU)
+        + 2 * h  # input + post-attn RMSNorm
+    )
+    final_norm = h
+    lm_head = 0 if cfg.tie_word_embeddings else v * h
+    return embed + layers * per_layer + final_norm + lm_head
 
 
 def weights_bytes(
