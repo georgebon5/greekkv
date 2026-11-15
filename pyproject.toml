@@ -25,7 +25,13 @@ classifiers = [
 dependencies = [
     "pydantic>=2.6",
     "pyyaml>=6.0",
-    "datasets>=2.18",
+    # Pinned <4 because datasets>=4 removed script-based dataset support, which
+    # Muennighoff/flores200 still relies on. Migration to a parquet-based FLORES
+    # mirror (openlanguagedata/flores_plus) requires HF auth and will be its
+    # own task.
+    "datasets>=2.18,<4",
+    "transformers>=4.40",
+    "numpy>=1.24",
 ]
 
 [project.optional-dependencies]
