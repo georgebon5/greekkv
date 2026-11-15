@@ -1,0 +1,31 @@
+name: Task
+description: A planned task from the roadmap (T01–T34) or a new concrete work item.
+title: "TXX — <short title>"
+body:
+  - type: input
+    id: deliverable
+    attributes:
+      label: Deliverable
+      description: What file / command / result lands at the end of this task.
+      placeholder: e.g. src/greekkv/memory/kv.py with kv_bytes(model_cfg, n_ctx, bits, group_size)
+    validations:
+      required: true
+
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Acceptance criteria
+      description: Checkable list. If it isn't checkable, rewrite it.
+      value: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / open questions
+      description: (optional) design decisions, risks, dependencies, references.
+    validations:
+      required: false

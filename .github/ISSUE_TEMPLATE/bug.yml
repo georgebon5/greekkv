@@ -1,0 +1,36 @@
+name: Bug
+description: Something in the toolkit behaves unexpectedly.
+title: "bug: <short description>"
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Observed behavior + any error message.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Minimal config + command. Paste `make check` output if relevant.
+      render: shell
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: e.g. Python 3.11, Kaggle T4, torch 2.3, transformers 4.44
+    validations:
+      required: false
