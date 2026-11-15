@@ -1,0 +1,25 @@
+# Minimal example experiment config. Used by tests and as a reference.
+name: krikri_fp16_baseline
+
+seed: 42
+
+model:
+  name: ilsp/Llama-Krikri-8B-Instruct
+  dtype: fp16
+  device: auto
+  load_in_4bit: true
+
+quant:
+  scheme: fp16         # baseline — no cache quantization
+  group_size: 128
+  residual: 0
+  key_axis: per_channel
+  value_axis: per_token
+  symmetric: true
+
+data:
+  name: flores200
+  split: devtest
+  n_samples: 200
+  n_ctx: 2048
+  language: el
