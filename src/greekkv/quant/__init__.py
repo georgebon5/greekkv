@@ -1,4 +1,5 @@
 from greekkv.quant.fakequant_cache import FakeQuantCache
+from greekkv.quant.kivi_cache import KiviCache, KiviCacheConfig
 from greekkv.quant.primitives import (
     QuantizedTensor,
     QuantMeta,
@@ -10,6 +11,8 @@ from greekkv.quant.primitives import (
 
 __all__ = [
     "FakeQuantCache",
+    "KiviCache",
+    "KiviCacheConfig",
     "QuantMeta",
     "QuantizedTensor",
     "dequantize",
