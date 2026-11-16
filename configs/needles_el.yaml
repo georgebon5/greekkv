@@ -1,0 +1,37 @@
+# Greek needles for T19 retrieval test.
+#
+# Each needle has a sentence embedded into the haystack, the question asked
+# at the end, the correct answer, and a plausible distractor. The scorer
+# picks between correct/distractor via length-normalised NLL (T18 pattern).
+#
+# Categories: number, name, place — matching the "names, numbers, places"
+# requirement of the T19 acceptance criteria.
+
+needles:
+  - category: number
+    needle: "Ο μυστικός αριθμός του δωματίου 7 είναι 827."
+    question: "Ποιος είναι ο μυστικός αριθμός του δωματίου 7;"
+    correct: "827"
+    distractor: "453"
+
+  - category: name
+    needle: "Το αγαπημένο βιβλίο της Δήμητρας είναι η Ιλιάδα."
+    question: "Ποιο είναι το αγαπημένο βιβλίο της Δήμητρας;"
+    correct: "Ιλιάδα"
+    distractor: "Οδύσσεια"
+
+  - category: place
+    needle: "Ο οδηγός ταξιδεύει πάντα προς την πόλη της Θεσσαλονίκης."
+    question: "Προς ποια πόλη ταξιδεύει πάντα ο οδηγός;"
+    correct: "Θεσσαλονίκη"
+    distractor: "Πάτρα"
+
+grid:
+  context_lengths: [1024, 2048]
+  depths: [0.0, 0.5, 1.0]
+
+# Haystack: Greek Wikipedia articles (via greekkv.tokenization.load_el_wikipedia_sample).
+haystack:
+  source: "wikimedia/wikipedia:20231101.el"
+  n_articles: 8
+  seed: 42
