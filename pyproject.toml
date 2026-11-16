@@ -36,6 +36,8 @@ dependencies = [
     # tensors and (later) to run inference. CPU wheels suffice for development.
     "torch>=2.1",
     "matplotlib>=3.7",
+    # psutil for cross-platform RSS sampling (T23 profiler on CPU).
+    "psutil>=5.9",
 ]
 
 [project.optional-dependencies]
