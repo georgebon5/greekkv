@@ -74,7 +74,8 @@ def _score_against_cache(
     ctx_ids: torch.Tensor,
     cont_ids: torch.Tensor,
     cache: KVCacheBackend,
-) -> ScoreResult:
+    return_logits: bool = False,
+) -> ScoreResult | tuple[ScoreResult, torch.Tensor]:
     """The inner workhorse — prefills ``ctx_ids[:-1]`` then scores
     ``ctx_ids[-1:] + cont_ids`` using the (possibly quantized) cache.
 
@@ -82,6 +83,11 @@ def _score_against_cache(
     continuation token, which are produced by the forward of the last
     context token. If we prefilled the full context, we'd throw those
     logits away.
+
+    When ``return_logits`` is set, the function additionally returns the
+    per-position logits tensor ``[n_cont, V]`` — used by the T20 fidelity
+    pipeline so a single forward pass serves both PPL and distribution
+    comparison.
     """
     n_cont = cont_ids.shape[-1]
 
@@ -103,11 +109,14 @@ def _score_against_cache(
         token_log_probs = log_probs.gather(1, targets.unsqueeze(1)).squeeze(1)
         nll_per_token = (-token_log_probs).cpu().tolist()
 
-    return ScoreResult(
+    result = ScoreResult(
         nll_sum=float(sum(nll_per_token)),
         nll_per_token=nll_per_token,
         n_tokens=n_cont,
     )
+    if return_logits:
+        return result, logits.detach().cpu()
+    return result
 
 
 def score_continuation(

@@ -1,10 +1,11 @@
-# Perplexity on Greek text (T17)
+# Perplexity + fidelity on Greek text (T17 + T20)
 
 **Measured, not assumed.** Numbers below come from
 `experiments/perplexity.py` running `Qwen/Qwen2.5-0.5B` in FP32 on CPU over
 15 non-overlapping windows carved from 8 Greek Wikipedia articles (seed 42),
 with the second half of each window scored against the first half held in
-a quantized cache.
+a quantized cache. **T20** adds distribution-level fidelity vs the FP16
+reference computed on the exact same logits (zero extra forward passes).
 
 Reproduce:
 ```bash
@@ -24,6 +25,8 @@ python experiments/plot_perplexity.py
 
 ## Numbers (`Qwen/Qwen2.5-0.5B`, Greek Wikipedia, 15 chunks per cell)
 
+### Perplexity
+
 | Scheme | n_ctx = 256 | n_ctx = 512 | n_ctx = 1024 |
 |---|---:|---:|---:|
 | **fp16**              | **3.89** | **3.98** | **4.15** |
@@ -35,6 +38,19 @@ python experiments/plot_perplexity.py
 
 Numbers in parentheses are the PPL penalty relative to FP16 at the same
 context length.
+
+### Fidelity vs FP16 (T20)
+
+Each row: mean across chunks, at `n_ctx = 512`.
+
+| Scheme | KL mean | KL p95 | top-1 agree | top-5 agree |
+|---|---:|---:|---:|---:|
+| **fp16**              | **0.000** | **0.000** | **1.000** | **1.000** |
+| int8-kivi              | 0.187 | 0.571 | 0.798 | 0.958 |
+| int8-fakequant         | 0.170 | 0.521 | 0.813 | 0.966 |
+| int4-fakequant         | 1.815 | 4.023 | 0.220 | 0.464 |
+| int4-kivi              | 2.224 | 5.133 | 0.182 | 0.407 |
+| eviction-sink (4, 32)  | 7.386 | 11.78 | 0.023 | 0.097 |
 
 ## What's actually being measured
 
@@ -52,11 +68,17 @@ context length.
 
 ## Reading the result
 
-### int8 is nearly free
+### int8 is nearly free — but not *free*
 Both `int8-fakequant` and `int8-kivi` sit within **17–24 %** of FP16 PPL
 across every context length. For Greek-serving work this is a
 straightforward win: ~2× memory reduction in the KV cache for a quality
 penalty you'd struggle to see in generated text.
+
+**But** the T20 fidelity row tells a sharper story: even `int8` disagrees
+with FP16 on the argmax **about 1 token in 5** (top-1 ≈ 80 %). Mean KL is
+~0.18 nats and the 95th-percentile KL is ~0.5 nats. These are the tokens
+where greedy decoding would pick a different continuation — relevant for
+sampling / beam search even when the aggregate PPL looks fine.
 
 ### int4 costs a lot
 `int4-fakequant` is **5–6×** worse than FP16, `int4-kivi` **7–9×**. Neither
@@ -74,6 +96,13 @@ of layers whose K is strongly channel-concentrated, and scales up (the paper
 reports its gains on 7B+ models). **We should verify the sign of the gap
 flips on a 7B model (Meltemi / Krikri, M4 roadmap).**
 
+The T20 row is consistent with that reading: at int4 KIVI has **higher KL**
+than vanilla fake-quant (2.22 vs 1.82 at n_ctx=512) and **lower top-1
+agreement** (18 % vs 22 %) — distribution-wise it is further from FP16,
+not closer. T19's needle result nevertheless flipped the order in KIVI's
+favour (point retrieval benefits from per-channel K even when the average
+token distribution does not).
+
 ### eviction-sink is a floor, not a competitor
 With `n_sink=4`, `n_recent=32`, roughly 85–97 % of context positions get
 zeroed before scoring. PPL blows up by 3+ orders of magnitude and grows
@@ -81,6 +110,11 @@ monotonically with `n_ctx` (longer context → more zeroed positions → more
 useful information discarded). This confirms the T14 caveat that the
 simplified eviction family is a lower bound, not a serious competitor to
 precision reduction, when configured this aggressively.
+
+The fidelity row makes this concrete: **top-1 agreement is 2 %** — i.e.
+the model under the destroyed cache picks the FP16 argmax effectively
+*never*. KL mean is ~7–8 nats, which for a ~151 k-vocab is close to the
+full ``log V ≈ 11.9`` ceiling.
 
 ### PPL drifts slightly upward with context length
 Even FP16 PPL edges from 3.89 → 4.15 as `n_ctx` grows. Most of this is
