@@ -1,0 +1,27 @@
+# T21 sweep config — reference run on Qwen2.5-0.5B CPU.
+#
+# Reproduce an entire T17/T20 experiment from one file. If the output
+# JSONL already contains some rows, scripts/run_sweep.py skips them by
+# config_hash and only runs the missing cells.
+
+experiment: perplexity
+model: Qwen/Qwen2.5-0.5B
+seed: 42
+
+# Haystack params
+n_samples: 8   # Greek Wikipedia articles
+n_chunks: 15   # non-overlapping windows per n_ctx
+ctx_frac: 0.5  # first half of each window is ctx, second half is scored
+
+# Grid
+n_ctx: [256, 512, 1024]
+
+schemes:
+  - {scheme: fp16}
+  - {scheme: int8-fakequant, bits: 8, group_size: 64}
+  - {scheme: int4-fakequant, bits: 4, group_size: 64}
+  - {scheme: int8-kivi,      bits: 8, group_size: 64, residual: 16}
+  - {scheme: int4-kivi,      bits: 4, group_size: 64, residual: 16}
+  - {scheme: eviction-sink,  n_sink: 4, n_recent: 32}
+
+output: results/perplexity/qwen2_5_0_5b.jsonl
