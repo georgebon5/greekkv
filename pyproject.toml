@@ -50,6 +50,9 @@ dev = [
 [project.urls]
 Repository = "https://github.com/georgebon5/greekkv"
 
+[project.scripts]
+greekkv-capacity = "greekkv.cli.capacity_cli:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/greekkv"]
 
