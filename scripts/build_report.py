@@ -37,6 +37,7 @@ RESULT_FILES: dict[str, Path] = {
     "perplexity": REPO_ROOT / "results/perplexity/qwen2_5_0_5b.jsonl",
     "benchmarks": REPO_ROOT / "results/benchmarks/qwen2_5_0_5b.jsonl",
     "needle": REPO_ROOT / "results/needle/qwen2_5_0_5b.jsonl",
+    "kernel_bench": REPO_ROOT / "results/kernel_bench/qwen2_5_0_5b_shape.jsonl",
 }
 
 OUTPUT = REPO_ROOT / "docs/RESULTS.md"
@@ -226,6 +227,53 @@ def benchmarks_section(rows: list[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def kernel_bench_section(rows: list[dict]) -> str:
+    # Pivot to one row per impl, one column per N.
+    by_impl: dict[str, dict[int, tuple[float, float, str]]] = defaultdict(dict)
+    for r in rows:
+        m = r["metrics"]
+        by_impl[r["scheme"]][int(m["N"])] = (
+            float(m["wall_ms_mean"]),
+            float(m["wall_ms_p95"]),
+            str(m["device"]),
+        )
+    ns = sorted({int(r["metrics"]["N"]) for r in rows})
+    impl_order = ["fp16_baseline", "reference_unfused", "triton_fused"]
+
+    header_cells = " | ".join(f"N = {n}" for n in ns)
+    sep_cells = " | ".join(["---:"] * len(ns))
+    lines = [
+        "## M4 — Decode-attention kernel benchmark (T25)",
+        "",
+        "Three single-query decode-attention implementations across `N_ctx` on "
+        "synthetic shape (H=8, H_kv=2, D=64, G=64). Wall time in ms per call, "
+        "mean over timed iterations after 3 warmups.",
+        "",
+        f"| Impl | {header_cells} |",
+        f"|---|{sep_cells}|",
+    ]
+    for impl in impl_order:
+        if impl not in by_impl:
+            continue
+        row_cells = []
+        for n in ns:
+            if n not in by_impl[impl]:
+                row_cells.append("—")
+            else:
+                mean_ms, _p95, _dev = by_impl[impl][n]
+                row_cells.append(f"{mean_ms:.2f}")
+        lines.append(f"| `{impl}` | " + " | ".join(row_cells) + " |")
+
+    devices = {dev for impl_data in by_impl.values() for _, _, dev in impl_data.values()}
+    if "cuda" not in devices:
+        lines.append("")
+        lines.append(
+            "_`triton_fused` is skipped on this run — CUDA + Triton unavailable on "
+            "the free-tier host. The M4 Kaggle T4 re-run will fill that row._"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def needle_section(rows: list[dict]) -> str:
     # Overall retrieval accuracy per scheme.
     by_scheme: dict[str, list[int]] = defaultdict(list)
@@ -275,6 +323,7 @@ def build_report() -> str:
     perplexity = load_jsonl(RESULT_FILES["perplexity"])
     benchmarks = load_jsonl(RESULT_FILES["benchmarks"])
     needle = load_jsonl(RESULT_FILES["needle"])
+    kernel_bench = load_jsonl(RESULT_FILES["kernel_bench"])
 
     parts = [HEAD]
     parts.append(fertility_section(fertility))
@@ -282,10 +331,12 @@ def build_report() -> str:
     parts.append(perplexity_section(perplexity))
     parts.append(benchmarks_section(benchmarks))
     parts.append(needle_section(needle))
+    parts.append(kernel_bench_section(kernel_bench))
     parts.append(
         "## Where to go next\n\n"
         "- `docs/fertility.md`, `docs/kv_cost.md`, `docs/kv_outliers.md`, "
-        "`docs/perplexity.md`, `docs/benchmarks.md`, `docs/needle_haystack.md` "
+        "`docs/perplexity.md`, `docs/benchmarks.md`, `docs/needle_haystack.md`, "
+        "`docs/kernel_bench.md` "
         "carry the full reading of each experiment.\n"
         "- `scripts/run_sweep.py` (T21) resumes the perplexity + fidelity sweep "
         "from any JSONL checkpoint.\n"

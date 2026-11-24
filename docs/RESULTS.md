@@ -78,8 +78,19 @@ Greek haystack, 3 needle categories (number / name / place), grid of context len
 | int4-kivi | 11/18 = 0.61 | (0.39, 0.83) |
 | eviction-sink | 6/18 = 0.33 | (0.17, 0.56) |
 
+## M4 — Decode-attention kernel benchmark (T25)
+
+Three single-query decode-attention implementations across `N_ctx` on synthetic shape (H=8, H_kv=2, D=64, G=64). Wall time in ms per call, mean over timed iterations after 3 warmups.
+
+| Impl | N = 256 | N = 1024 | N = 4096 |
+|---|---: | ---: | ---:|
+| `fp16_baseline` | 0.19 | 0.25 | 0.57 |
+| `reference_unfused` | 0.13 | 0.25 | 0.51 |
+
+_`triton_fused` is skipped on this run — CUDA + Triton unavailable on the free-tier host. The M4 Kaggle T4 re-run will fill that row._
+
 ## Where to go next
 
-- `docs/fertility.md`, `docs/kv_cost.md`, `docs/kv_outliers.md`, `docs/perplexity.md`, `docs/benchmarks.md`, `docs/needle_haystack.md` carry the full reading of each experiment.
+- `docs/fertility.md`, `docs/kv_cost.md`, `docs/kv_outliers.md`, `docs/perplexity.md`, `docs/benchmarks.md`, `docs/needle_haystack.md`, `docs/kernel_bench.md` carry the full reading of each experiment.
 - `scripts/run_sweep.py` (T21) resumes the perplexity + fidelity sweep from any JSONL checkpoint.
 - Figures live under `results/figures/`; regenerate them with the experiment-specific plot scripts under `experiments/plot_*.py`.

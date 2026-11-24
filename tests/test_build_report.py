@@ -47,6 +47,7 @@ def test_ensure_files_exist_raises_when_any_file_is_missing(
         "perplexity": tmp_path / "nope.jsonl",
         "benchmarks": tmp_path / "nope.jsonl",
         "needle": tmp_path / "nope.jsonl",
+        "kernel_bench": tmp_path / "nope.jsonl",
     }
     monkeypatch.setattr(report_mod, "RESULT_FILES", bad_files)
     with pytest.raises(SystemExit) as exc:
@@ -172,6 +173,47 @@ def test_needle_section_overall_accuracy_and_ci(report_mod):
     assert md.count("(") >= 2
 
 
+def _kb_row(impl: str, n: int, mean_ms: float, p95_ms: float, device: str = "cpu") -> dict:
+    return {
+        "scheme": impl,
+        "metrics": {
+            "impl": impl,
+            "N": n,
+            "wall_ms_mean": mean_ms,
+            "wall_ms_p95": p95_ms,
+            "device": device,
+        },
+    }
+
+
+def test_kernel_bench_section_pivot_and_cpu_note(report_mod):
+    rows = [
+        _kb_row("fp16_baseline", 256, 0.19, 0.21),
+        _kb_row("reference_unfused", 256, 0.13, 0.14),
+        _kb_row("fp16_baseline", 1024, 0.25, 0.26),
+        _kb_row("reference_unfused", 1024, 0.25, 0.26),
+    ]
+    md = report_mod.kernel_bench_section(rows)
+    assert "## M4 — Decode-attention kernel benchmark (T25)" in md
+    assert "N = 256" in md and "N = 1024" in md
+    assert "`fp16_baseline`" in md and "`reference_unfused`" in md
+    # 0.13 ms cell must be rendered.
+    assert "0.13" in md
+    # CPU-only fixture → Triton note should appear.
+    assert "triton_fused" in md
+    assert "skipped" in md.lower()
+
+
+def test_kernel_bench_section_no_cpu_note_when_cuda_rows_present(report_mod):
+    rows = [
+        _kb_row("fp16_baseline", 256, 0.19, 0.21),
+        _kb_row("triton_fused", 256, 0.02, 0.03, device="cuda"),
+    ]
+    md = report_mod.kernel_bench_section(rows)
+    assert "`triton_fused`" in md
+    assert "skipped" not in md.lower()
+
+
 # ---------------------------------------------------------------------------
 # End-to-end: build the report from committed results
 # ---------------------------------------------------------------------------
@@ -186,6 +228,7 @@ def test_build_report_runs_against_committed_rows(report_mod):
         "## M3 — Perplexity sweep (T17 + T20 fidelity)",
         "## M3 — Greek multi-choice benchmark accuracy (T18)",
         "## M3 — Needle-in-a-haystack retrieval (T19)",
+        "## M4 — Decode-attention kernel benchmark (T25)",
     ):
         assert marker in text, f"missing section: {marker}"
     # The report should be non-trivial — at least a few KB of content.
