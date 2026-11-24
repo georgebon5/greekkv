@@ -186,3 +186,5 @@ def test_main_skips_n_not_divisible_by_group_size(kb_mod, tmp_path, monkeypatch,
     # No rows should have been written for the skipped size.
     if out.exists():
         assert out.read_text().strip() == ""
+    # Empty row set → no figure should be produced either.
+    assert not (figs / "kernel_benchmark.png").exists()

@@ -126,6 +126,10 @@ def _plot(rows: list[dict], out_dir: Path, shape_label: str) -> None:
     for impl in by_impl:
         by_impl[impl].sort()
 
+    if not by_impl:
+        # Nothing to plot (e.g. every N was skipped). Stay silent and return.
+        return
+
     fig, ax = plt.subplots(figsize=(8.5, 5.2))
     for impl, data in by_impl.items():
         xs = [d[0] for d in data]
