@@ -169,9 +169,7 @@ def _run_grid(
             overhead_bytes=overhead_bytes,
             source="measured" if want_measured else "estimated",
             measured_ppl=measurement.perplexity if want_measured else None,
-            measured_decode_ms=(
-                measurement.decode_ms_per_token if want_measured else None
-            ),
+            measured_decode_ms=(measurement.decode_ms_per_token if want_measured else None),
         )
         results.append(capacity(inp))
     return results
@@ -186,8 +184,15 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "committed T17/T23 JSONL; --estimate to skip the lookup entirely."
         ),
     )
-    ap.add_argument("--model", required=True, help="Hugging Face model id (see _KNOWN_MODELS for coverage)")
-    ap.add_argument("--vram-gb", type=float, required=True, help="GPU VRAM budget in GB (power of 2 base, i.e. GiB)")
+    ap.add_argument(
+        "--model", required=True, help="Hugging Face model id (see _KNOWN_MODELS for coverage)"
+    )
+    ap.add_argument(
+        "--vram-gb",
+        type=float,
+        required=True,
+        help="GPU VRAM budget in GB (power of 2 base, i.e. GiB)",
+    )
     ap.add_argument("--n-ctx", type=int, required=True, help="Sequence length per user")
     ap.add_argument(
         "--overhead-mb",
@@ -196,9 +201,17 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="Runtime overhead (framework + activations) in MB. Default: T23 median.",
     )
     g = ap.add_mutually_exclusive_group()
-    g.add_argument("--measured", action="store_true", help="Only annotate rows that have a measured JSONL cell")
-    g.add_argument("--estimate", action="store_true", help="Skip the measured JSONL lookup entirely")
-    g.add_argument("--all", action="store_true", help="Both: use measurements where available, estimate otherwise")
+    g.add_argument(
+        "--measured", action="store_true", help="Only annotate rows that have a measured JSONL cell"
+    )
+    g.add_argument(
+        "--estimate", action="store_true", help="Skip the measured JSONL lookup entirely"
+    )
+    g.add_argument(
+        "--all",
+        action="store_true",
+        help="Both: use measurements where available, estimate otherwise",
+    )
 
     ap.add_argument(
         "--perplexity-jsonl",
@@ -212,7 +225,9 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         default=None,
         help="Override path for T23 profile JSONL",
     )
-    ap.add_argument("--json", action="store_true", help="Emit machine-readable JSON instead of a table")
+    ap.add_argument(
+        "--json", action="store_true", help="Emit machine-readable JSON instead of a table"
+    )
     return ap.parse_args(argv)
 
 
