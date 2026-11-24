@@ -42,6 +42,21 @@ Python 3.10 or 3.11 supported.
 > [`docs/DECISIONS.md`](docs/DECISIONS.md), ADR-0001). Every PR runs `make check`
 > locally and pastes the output into the PR description as a substitute.
 
+## Try it
+
+After `pip install -e .`, the `greekkv-capacity` CLI is on your PATH.
+Given a model, a VRAM budget, and a context length, it prints how many
+concurrent users each KV cache scheme supports — annotated **measured**
+or **estimated** per row depending on whether the committed T17 / T23
+JSONL cover the cell.
+
+```bash
+greekkv-capacity --model Qwen/Qwen2.5-0.5B --vram-gb 16 --n-ctx 1024 --all
+```
+
+See [`docs/capacity.md`](docs/capacity.md) for the full arithmetic,
+scheme breakdown, and honesty contract.
+
 ## Reproducibility contract
 
 Every number in this repo must be traceable to:
