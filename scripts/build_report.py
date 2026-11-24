@@ -24,6 +24,7 @@ import csv
 import json
 import sys
 from collections import defaultdict
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -38,9 +39,11 @@ RESULT_FILES: dict[str, Path] = {
     "benchmarks": REPO_ROOT / "results/benchmarks/qwen2_5_0_5b.jsonl",
     "needle": REPO_ROOT / "results/needle/qwen2_5_0_5b.jsonl",
     "kernel_bench": REPO_ROOT / "results/kernel_bench/qwen2_5_0_5b_shape.jsonl",
+    "profile": REPO_ROOT / "results/profile/qwen2_5_0_5b.jsonl",
 }
 
 OUTPUT = REPO_ROOT / "docs/RESULTS.md"
+PLANNER_DATA_OUTPUT = REPO_ROOT / "planner/public/data.json"
 
 SCHEME_ORDER = [
     "fp16",
@@ -346,12 +349,74 @@ def build_report() -> str:
     return "\n".join(parts)
 
 
+def build_planner_data() -> dict:
+    """Produce the snapshot the static planner app reads at load.
+
+    The planner recomputes capacity numbers in-browser (TypeScript port
+    of :func:`greekkv.memory.capacity.capacity`) but it leans on this
+    file for anything *measured*: perplexity, decode latency, and peak
+    memory. Writing it from the same build_report entry point keeps
+    docs/RESULTS.md and the planner UI in lock-step.
+    """
+    perplexity_rows = load_jsonl(RESULT_FILES["perplexity"])
+    profile_rows = load_jsonl(RESULT_FILES["profile"])
+
+    # Group perplexity rows by (model, scheme, n_ctx) → headline metrics.
+    ppl_index: dict[tuple[str, str, int], dict[str, float]] = {}
+    for r in perplexity_rows:
+        m = r["metrics"]
+        key = (r["model"], r["scheme"], int(m["n_ctx"]))
+        ppl_index[key] = {
+            "perplexity": float(m["perplexity"]),
+            "kl_mean": float(m.get("kl_mean", 0.0)),
+            "top1_agree": float(m.get("top1_agree", 0.0)),
+        }
+
+    prof_index: dict[tuple[str, str, int], dict[str, float]] = {}
+    for r in profile_rows:
+        m = r["metrics"]
+        if "decode_ms_per_token" not in m:
+            continue
+        key = (r["model"], r["scheme"], int(m["n_ctx"]))
+        prof_index[key] = {
+            "decode_ms_per_token": float(m["decode_ms_per_token"]),
+            "peak_mem_mb": float(m.get("peak_mem_mb", 0.0)),
+        }
+
+    measurements: list[dict] = []
+    for key in sorted(set(ppl_index) | set(prof_index)):
+        model, scheme, n_ctx = key
+        entry: dict = {"model": model, "scheme": scheme, "n_ctx": n_ctx}
+        entry.update(ppl_index.get(key, {}))
+        entry.update(prof_index.get(key, {}))
+        measurements.append(entry)
+
+    return {
+        "schema_version": 1,
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "models": sorted({m["model"] for m in measurements}),
+        "schemes": sorted({m["scheme"] for m in measurements}),
+        "n_ctx_grid": sorted({m["n_ctx"] for m in measurements}),
+        "measurements": measurements,
+    }
+
+
 def main() -> int:
     ensure_files_exist()
     report = build_report()
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(report, encoding="utf-8")
     print(f"Wrote {OUTPUT.relative_to(REPO_ROOT)}  ({len(report)} chars)")
+
+    planner_data = build_planner_data()
+    PLANNER_DATA_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    PLANNER_DATA_OUTPUT.write_text(
+        json.dumps(planner_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    print(
+        f"Wrote {PLANNER_DATA_OUTPUT.relative_to(REPO_ROOT)}  "
+        f"({len(planner_data['measurements'])} measurement rows)"
+    )
     return 0
 
 

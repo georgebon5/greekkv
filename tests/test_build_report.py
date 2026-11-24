@@ -48,6 +48,7 @@ def test_ensure_files_exist_raises_when_any_file_is_missing(
         "benchmarks": tmp_path / "nope.jsonl",
         "needle": tmp_path / "nope.jsonl",
         "kernel_bench": tmp_path / "nope.jsonl",
+        "profile": tmp_path / "nope.jsonl",
     }
     monkeypatch.setattr(report_mod, "RESULT_FILES", bad_files)
     with pytest.raises(SystemExit) as exc:
@@ -233,3 +234,27 @@ def test_build_report_runs_against_committed_rows(report_mod):
         assert marker in text, f"missing section: {marker}"
     # The report should be non-trivial — at least a few KB of content.
     assert len(text) > 2000
+
+
+def test_build_planner_data_has_expected_shape(report_mod):
+    data = report_mod.build_planner_data()
+    assert data["schema_version"] == 1
+    assert "generated_at" in data
+    # At least Qwen2.5-0.5B must be present — the committed grid.
+    assert "Qwen/Qwen2.5-0.5B" in data["models"]
+    # All six canonical schemes must show up in the measured grid.
+    expected_schemes = {
+        "fp16",
+        "int8-fakequant",
+        "int8-kivi",
+        "int4-fakequant",
+        "int4-kivi",
+        "eviction-sink",
+    }
+    assert expected_schemes.issubset(set(data["schemes"]))
+    # Measurement rows carry (model, scheme, n_ctx) + at least one metric.
+    assert len(data["measurements"]) >= 6
+    for m in data["measurements"]:
+        assert set(m.keys()) >= {"model", "scheme", "n_ctx"}
+        # Every row must carry either PPL or decode_ms (we join two files).
+        assert ("perplexity" in m) or ("decode_ms_per_token" in m)
