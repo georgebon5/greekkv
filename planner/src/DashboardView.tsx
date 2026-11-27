@@ -3,6 +3,7 @@
 // the tab is wired and the user can navigate even before any chart
 // renders.
 
+import { PerplexityChart } from "./charts/PerplexityChart";
 import type { Dataset } from "./measurements";
 
 export function DashboardView({ dataset }: { dataset: Dataset | null }) {
@@ -50,11 +51,18 @@ export function DashboardView({ dataset }: { dataset: Dataset | null }) {
           Generated {dataset.generated_at} · {nPpl} perplexity rows · {nProf}{" "}
           profile rows · {nKernel} kernel-bench rows.
         </p>
-        <p className="muted">
-          Charts (perplexity × n_ctx, decode latency × n_ctx, fidelity top-1
-          vs KL) land in T30.3 – T30.5.
-        </p>
       </section>
+
+      <PerplexityChart
+        rows={dataset.perplexity_rows ?? []}
+        model={primaryModel(dataset)}
+      />
     </>
   );
+}
+
+function primaryModel(ds: Dataset): string {
+  // Dashboard currently covers one model at a time. Pick the first
+  // one with the richest row count so the charts always have data.
+  return ds.models[0] ?? "Qwen/Qwen2.5-0.5B";
 }

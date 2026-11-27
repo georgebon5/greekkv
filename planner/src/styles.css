@@ -230,3 +230,27 @@ footer {
 .bar-bytes {
   font-size: 0.78rem;
 }
+
+.chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-svg .axis text,
+.chart-svg .legend-text,
+.chart-svg .axis-label {
+  font-size: 10px;
+  fill: #555;
+}
+
+.chart-svg .axis-label {
+  font-size: 11px;
+  fill: #333;
+}
+
+.chart-svg .legend-text {
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  fill: #333;
+}
