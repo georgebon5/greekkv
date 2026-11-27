@@ -238,7 +238,7 @@ def test_build_report_runs_against_committed_rows(report_mod):
 
 def test_build_planner_data_has_expected_shape(report_mod):
     data = report_mod.build_planner_data()
-    assert data["schema_version"] == 1
+    assert data["schema_version"] == 2
     assert "generated_at" in data
     # At least Qwen2.5-0.5B must be present — the committed grid.
     assert "Qwen/Qwen2.5-0.5B" in data["models"]
@@ -258,3 +258,14 @@ def test_build_planner_data_has_expected_shape(report_mod):
         assert set(m.keys()) >= {"model", "scheme", "n_ctx"}
         # Every row must carry either PPL or decode_ms (we join two files).
         assert ("perplexity" in m) or ("decode_ms_per_token" in m)
+
+    # Schema v2: raw per-experiment rows for the T30 dashboard.
+    assert "perplexity_rows" in data
+    assert "profile_rows" in data
+    assert "kernel_bench_rows" in data
+    assert len(data["perplexity_rows"]) >= 6
+    assert len(data["profile_rows"]) >= 6
+    # Each raw row keeps the (model, scheme, metrics) triple intact.
+    for row in data["perplexity_rows"]:
+        assert set(row.keys()) == {"model", "scheme", "metrics"}
+        assert "n_ctx" in row["metrics"] and "perplexity" in row["metrics"]

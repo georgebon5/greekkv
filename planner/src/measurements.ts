@@ -13,6 +13,12 @@ export interface Measurement {
   peak_mem_mb?: number;
 }
 
+export interface RawRow {
+  model: string;
+  scheme: string;
+  metrics: Record<string, number | string | boolean | null>;
+}
+
 export interface Dataset {
   schema_version: number;
   generated_at: string;
@@ -20,6 +26,11 @@ export interface Dataset {
   schemes: string[];
   n_ctx_grid: number[];
   measurements: Measurement[];
+  // Schema v2+: raw per-experiment rows for the dashboard. Older
+  // snapshots omit them, hence the optional ?.
+  perplexity_rows?: RawRow[];
+  profile_rows?: RawRow[];
+  kernel_bench_rows?: RawRow[];
 }
 
 export function pickMeasurement(
