@@ -44,18 +44,17 @@ Python 3.10 or 3.11 supported.
 
 ## Try it
 
-After `pip install -e .`, the `greekkv-capacity` CLI is on your PATH.
-Given a model, a VRAM budget, and a context length, it prints how many
-concurrent users each KV cache scheme supports — annotated **measured**
-or **estimated** per row depending on whether the committed T17 / T23
-JSONL cover the cell.
+**Web planner:** [`georgebon5.github.io/greekkv/`](https://georgebon5.github.io/greekkv/) — static TypeScript app, 50 KB gzip, offline-friendly. Pick a model, dial VRAM / GPU count / context length, and watch max concurrent users update live per scheme. Perplexity and decode-latency columns are populated from the committed `results/` JSONL via `scripts/build_report.py → planner/public/data.json`.
+
+**CLI:** after `pip install -e .`, the `greekkv-capacity` command is on your PATH:
 
 ```bash
 greekkv-capacity --model Qwen/Qwen2.5-0.5B --vram-gb 16 --n-ctx 1024 --all
 ```
 
-See [`docs/capacity.md`](docs/capacity.md) for the full arithmetic,
-scheme breakdown, and honesty contract.
+Rows tagged `measured` come from the T17 / T23 JSONL; `estimated` rows have no corresponding measurement row and blank the PPL / ms columns. See [`docs/capacity.md`](docs/capacity.md) for the arithmetic, scheme breakdown, and honesty contract, and [`planner/README.md`](planner/README.md) for the web app's build + deploy story.
+
+> **Note on Pages deployment:** The Pages workflow may not have run yet due to the same account-level Actions lock documented in [`docs/DECISIONS.md`](docs/DECISIONS.md) (ADR-0001). `cd planner && npm ci && npm run build && npm run preview` reproduces the deployed app locally.
 
 ## Reproducibility contract
 

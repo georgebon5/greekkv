@@ -1,0 +1,61 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "planner/**"
+      - "scripts/build_report.py"
+      - "results/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# Follows the official actions/deploy-pages contract.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build planner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: planner/package-lock.json
+
+      - name: Install planner deps
+        working-directory: planner
+        run: npm ci
+
+      - name: Build planner (base = /greekkv/)
+        working-directory: planner
+        env:
+          GREEKKV_BASE: /greekkv/
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: planner/dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
