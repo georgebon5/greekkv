@@ -44,7 +44,10 @@ Python 3.10 or 3.11 supported.
 
 ## Try it
 
-**Web planner:** [`georgebon5.github.io/greekkv/`](https://georgebon5.github.io/greekkv/) — static TypeScript app, 50 KB gzip, offline-friendly. Pick a model, dial VRAM / GPU count / context length, and watch max concurrent users update live per scheme. Perplexity and decode-latency columns are populated from the committed `results/` JSONL via `scripts/build_report.py → planner/public/data.json`.
+**Web planner + dashboard:** [`georgebon5.github.io/greekkv/`](https://georgebon5.github.io/greekkv/) — one static TypeScript app, 52 KB gzip, offline-friendly, two tabs:
+
+- **Planner.** Pick a model, dial VRAM / GPU count / context length, and watch max concurrent users update live per scheme. Perplexity and decode-latency columns are populated from the committed `results/` JSONL via `scripts/build_report.py → planner/public/data.json`.
+- **Dashboard.** Three charts over the committed JSONL: perplexity × n_ctx (log-y), decode latency × n_ctx (linear-y), and fidelity top-1 vs KL scatter. Every dot is one JSONL row — no interpolation, no smoothing. See [`docs/dashboard.md`](docs/dashboard.md).
 
 **CLI:** after `pip install -e .`, the `greekkv-capacity` command is on your PATH:
 
