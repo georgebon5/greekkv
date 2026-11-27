@@ -391,13 +391,30 @@ def build_planner_data() -> dict:
         entry.update(prof_index.get(key, {}))
         measurements.append(entry)
 
+    # Schema v2: dashboard carries full per-experiment rows so the UI can
+    # render any axis. The planner only reads `measurements` (unchanged).
+    def _strip_row(row: dict) -> dict:
+        m = row.get("metrics", {})
+        return {
+            "model": row["model"],
+            "scheme": row["scheme"],
+            "metrics": m,
+        }
+
+    kernel_rows = []
+    if RESULT_FILES["kernel_bench"].exists():
+        kernel_rows = [_strip_row(r) for r in load_jsonl(RESULT_FILES["kernel_bench"])]
+
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "models": sorted({m["model"] for m in measurements}),
         "schemes": sorted({m["scheme"] for m in measurements}),
         "n_ctx_grid": sorted({m["n_ctx"] for m in measurements}),
         "measurements": measurements,
+        "perplexity_rows": [_strip_row(r) for r in perplexity_rows],
+        "profile_rows": [_strip_row(r) for r in profile_rows],
+        "kernel_bench_rows": kernel_rows,
     }
 
 
