@@ -120,3 +120,76 @@ footer {
   color: #666;
   font-size: 0.85rem;
 }
+
+.chart {
+  background: #fff;
+  border: 1px solid #e3e3e5;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.chart h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+.chart p {
+  margin: 0 0 0.75rem 0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.swatch {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem;
+}
+
+.bar-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  font-size: 0.9rem;
+}
+
+.bar-svg {
+  width: 100%;
+  height: 16px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar-bytes {
+  font-size: 0.78rem;
+}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { capacityGrid, type CapacityRow } from "./capacity";
 import { formatBytes, formatInt, formatNumber } from "./format";
+import { MemoryBreakdown } from "./MemoryBreakdown";
 import { KNOWN_MODELS, findModel } from "./models";
 import {
   type Dataset,
@@ -30,11 +31,15 @@ export function App() {
 
   const cfg = useMemo(() => findModel(modelId), [modelId]);
 
+  const totalVramBytes = useMemo(
+    () => Math.round(vramGb * gpuCount * 1024 ** 3),
+    [vramGb, gpuCount],
+  );
+
   const rows = useMemo(() => {
-    const totalVramBytes = Math.round(vramGb * gpuCount * 1024 ** 3);
     const overheadBytes = Math.round(overheadMb * 1024 * 1024);
     return capacityGrid(cfg, totalVramBytes, nCtx, overheadBytes);
-  }, [cfg, vramGb, gpuCount, nCtx, overheadMb]);
+  }, [cfg, totalVramBytes, nCtx, overheadMb]);
 
   return (
     <main>
@@ -62,6 +67,8 @@ export function App() {
       />
 
       <ResultsTable rows={rows} modelId={modelId} nCtx={nCtx} dataset={dataset} />
+
+      <MemoryBreakdown rows={rows} vramBytes={totalVramBytes} />
 
       <footer>
         <p className="muted">
