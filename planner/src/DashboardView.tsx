@@ -3,6 +3,7 @@
 // the tab is wired and the user can navigate even before any chart
 // renders.
 
+import { LatencyChart } from "./charts/LatencyChart";
 import { PerplexityChart } from "./charts/PerplexityChart";
 import type { Dataset } from "./measurements";
 
@@ -55,6 +56,10 @@ export function DashboardView({ dataset }: { dataset: Dataset | null }) {
 
       <PerplexityChart
         rows={dataset.perplexity_rows ?? []}
+        model={primaryModel(dataset)}
+      />
+      <LatencyChart
+        rows={dataset.profile_rows ?? []}
         model={primaryModel(dataset)}
       />
     </>
