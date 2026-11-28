@@ -27,23 +27,27 @@ Status: **v0.1.0-rc** — M1–M5 complete and measured end-to-end on a single m
 
 Full task list lives in [GitHub Issues](https://github.com/georgebon5/greekkv/issues) (one issue per task, grouped by milestone).
 
-## Development setup
+## Reproduce the whole report in one command
 
 ```bash
-git clone https://github.com/georgebon5/greekkv.git
-cd greekkv
+git clone https://github.com/georgebon5/greekkv.git && cd greekkv
 python -m venv .venv && source .venv/bin/activate
-make install        # pip install -e ".[dev]"
-pre-commit install
-make check          # ruff + format + pytest (same as CI)
+make install        # pip install -e ".[dev]"  — CPU wheels, ~2 GB
+make reproduce      # regenerates figures + docs/RESULTS.md + planner/public/data.json
+make check          # ruff + format + pytest (291 tests, ~35s on CPU)
 ```
 
-Python 3.10 or 3.11 supported.
+Everything under `results/` is already committed, so `make reproduce` never calls a model — it only re-plots the figures and regenerates the aggregated report + planner data file from the JSONL. No GPU, no internet after `pip install`, no accounts. Python 3.10 or 3.11 supported.
 
-> **Note on CI status:** The CI badge above may show red/unknown while this
-> account's GitHub Actions is temporarily unavailable (see
-> [`docs/DECISIONS.md`](docs/DECISIONS.md), ADR-0001). Every PR runs `make check`
-> locally and pastes the output into the PR description as a substitute.
+**Determinism check.** `make verify-reproduce` runs the pipeline twice with a frozen `SOURCE_DATE_EPOCH` and fails if `docs/RESULTS.md` or `planner/public/data.json` diverge between the two passes. Verified locally in a fresh venv as of v0.1.0-rc:
+
+```
+→ first pass (SOURCE_DATE_EPOCH=1794700800)
+→ second pass
+✓ reproduce is idempotent
+```
+
+> **Note on CI status.** The `CI` and `Pages` badges above may show red/unknown while this account's GitHub Actions is temporarily locked (see [`docs/DECISIONS.md`](docs/DECISIONS.md) ADR-0001). Every PR pastes the `make check` output into its description as a CI substitute until the lock lifts; the workflows themselves are green when triggered locally with `act`.
 
 ## Try it
 
