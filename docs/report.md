@@ -87,3 +87,65 @@ Three mechanisms keep the numbers trustworthy without relying on discipline:
 - `greekkv-capacity --measured` only annotates `ppl` and `ms/tok` on rows whose exact `(model, scheme, n_ctx)` triple exists in the JSONL; everything else prints `—`.
 - `make verify-reproduce` runs the full report pipeline twice with a frozen `SOURCE_DATE_EPOCH` and fails if `docs/RESULTS.md` or `planner/public/data.json` diverge.
 - `test_build_report_runs_against_committed_rows` parses the real `results/` tree in CI, so a broken JSONL cannot ship inside a passing PR.
+
+## 4. Results
+
+### 4.1 The Greek tokenizer tax
+
+Tokens per whitespace-separated word on FLORES-200 devtest, 500 sentences per language (figure source: `experiments/fertility.py`, figure at `results/figures/fertility.png`):
+
+| Tokenizer | EN | EL | **EL / EN** |
+|---|---:|---:|---:|
+| `ilsp/Llama-Krikri-8B-Instruct` | 1.27 | 1.53 | **1.21×** |
+| `ilsp/Meltemi-7B-Instruct-v1.5` | 1.37 | 1.43 | **1.04×** |
+| `Qwen/Qwen2.5-7B-Instruct` | 1.30 | 5.67 | **4.38×** |
+
+Krikri and Meltemi shipped their own Greek-aware tokenizers; Qwen's English-centric BPE spends 4.4× more tokens on the same Greek text. At `n_ctx = 1024` that is the difference between 242 KB and 1 062 KB of KV cache per user before any quantization enters the picture. Everything else in this report runs on top of that baseline difference.
+
+### 4.2 Perplexity on Greek Wikipedia
+
+15 chunks per `(scheme, n_ctx)` cell, sliding-window perplexity, `Qwen/Qwen2.5-0.5B` (figure source: `experiments/plot_perplexity.py`, figure at `results/figures/perplexity_qwen2_5_0_5b.png`).
+
+| Scheme | n_ctx = 256 | n_ctx = 512 | n_ctx = 1024 |
+|---|---:|---:|---:|
+| `fp16` | 3.89 | 3.98 | 4.15 |
+| `int8-fakequant` | 4.55 | 4.62 | 5.16 |
+| `int8-kivi` | 4.48 | 4.66 | 5.16 |
+| `int4-fakequant` | 24.12 | 23.10 | 22.18 |
+| `int4-kivi` | 29.61 | 34.49 | 35.54 |
+| `eviction-sink` | 3257.23 | 6372.87 | 12323.30 |
+
+Read: 8-bit (either KIVI or fake-quant) sits within 25% of the FP16 baseline on this task; 4-bit opens a 5–9× gap; `eviction-sink` is three orders of magnitude worse because the cache is bounded at 36 tokens regardless of `n_ctx`.
+
+### 4.3 Fidelity vs FP16 (n_ctx = 512)
+
+Position-wise agreement with the FP16 argmax (figure source: §4.2 same script; fidelity metric defined in `src/greekkv/eval/fidelity.py`).
+
+| Scheme | top-1 agree | top-5 agree | KL mean | KL p95 |
+|---|---:|---:|---:|---:|
+| `fp16` | 1.000 | 1.000 | 0.000 | 0.000 |
+| `int8-fakequant` | 0.813 (0.78, 0.84) | 0.978 | 0.170 | 0.786 |
+| `int8-kivi` | 0.798 (0.77, 0.83) | 0.972 | 0.187 | 0.907 |
+| `int4-fakequant` | 0.220 (0.19, 0.25) | 0.550 | 1.815 | 3.952 |
+| `int4-kivi` | 0.182 (0.15, 0.21) | 0.489 | 2.224 | 5.118 |
+| `eviction-sink` | 0.023 (0.01, 0.04) | 0.077 | 7.386 | 12.810 |
+
+CIs are 95% bootstrap over the 1920 scored positions per cell, 1000 resamples, `seed = 0`. Top-1 is more relevant to greedy decoding; top-5 to sampling and beam search. The int8 variants retain 80% greedy agreement and 97% sampling agreement — close enough that most downstream systems would not notice. int4 variants drop out of both regimes.
+
+### 4.4 Decode latency and capacity
+
+Peak RSS delta + ms/tok on a 16-token decode (figure source: `experiments/systems_profile.py`, `docs/systems_profile.md` has the full narrative).
+
+| Scheme | ms/tok @ 256 | ms/tok @ 512 | ms/tok @ 1024 | users @ 16 GiB, n_ctx = 1024 |
+|---|---:|---:|---:|---:|
+| `fp16` | 5.8 | 4.6 | 15.4 | 1,232 |
+| `int8-fakequant` | 5.8 | 6.8 | 6.0 | 2,390 |
+| `int8-kivi` | 5.4 | 5.6 | **5.3** | 2,314 |
+| `int4-fakequant` | **110** | **146** | **140** | 4,640 |
+| `int4-kivi` | 5.6 | 5.3 | 5.9 | 4,229 |
+| `eviction-sink` | 4.1 | 3.8 | 5.0 | 35,061 |
+
+Two reads:
+
+- **int4-fakequant is a loud outlier** — 23× slower than everything else. §5 explains the architectural cause.
+- **Capacity scales roughly as expected**: int8 ≈ 2× FP16, int4 ≈ 4× FP16. KIVI pays a few per-mille for its FP16 residual window; eviction-sink is the only scheme whose cache does not grow with `n_ctx` and therefore its capacity number is bounded by the overhead, not the cache.
