@@ -49,6 +49,7 @@ def _generated_at() -> str:
         raise SystemExit(f"invalid SOURCE_DATE_EPOCH={raw!r}: {e}") from e
     return datetime.fromtimestamp(ts, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 RESULT_FILES: dict[str, Path] = {

@@ -101,6 +101,21 @@ What this means in practice:
 - **Estimated today:** everything else — Krikri / Meltemi quality cells, longer context lengths, and larger models all show up with the hardware number live and the quality column blank.
 - **Reproducibility contract:** every committed number must be traceable to (1) a file under `results/`, and (2) the code + config that produced it. Any result from hardware above free tiers (Kaggle T4 / P100, Colab T4) is labelled `estimate`, never `measurement`. `make verify-reproduce` enforces this: a two-pass run with a frozen `SOURCE_DATE_EPOCH` and a diff gate means the committed `docs/RESULTS.md` and `planner/public/data.json` cannot drift from their JSONL sources.
 
+## Limitations
+
+- **One model so far.** Every measured cell uses `Qwen/Qwen2.5-0.5B`. The planner UI exposes Krikri-8B and Meltemi-7B configs so you can see the hardware math, but their quality columns stay blank until the M4 Kaggle T4 re-run lands JSONL rows. The honest-numbers contract (`source=measured|estimated`) makes that explicit on every row.
+- **Context grid stops at 1024.** T17 / T23 cover `n_ctx ∈ {256, 512, 1024}`. Capacity extrapolates to longer contexts correctly (closed-form), but quality at `n_ctx = 8192` is unknown and the dashboard will not draw it.
+- **CPU host for every measurement.** All numbers in this repo were produced on a MacBook (Apple Silicon, CPU-only). The T23 `int4-fakequant` decode outlier is an architectural CPU-dispatch finding; GPU kernels (T24 Triton, T26 NEON) are implemented and unit-tested but their *timed* numbers against FP16 are the next thing to collect on a T4.
+- **No end-to-end chat harness.** The project measures PPL + fidelity + needle retrieval, not full chat benchmarks or RLHF-era eval suites. That's a deliberate scope choice for a v0.1.0 — see the `T32 technical report` for what else would be worth running.
+- **Static planner + dashboard are offline by design.** They do not call any model from the browser; all they read is `planner/public/data.json`. If you want live model inference, see the `minillm.cpp` cross-contribution (T26) which runs SmolLM2 on CPU.
+
+## Roadmap after v0.1.0
+
+- **T32 — Technical report**: standalone PDF walking through the claims and the pitfalls (CPU vs GPU, fake-quant dispatch cost, KIVI residual window trade-off). Draft lives next door in `docs/`.
+- **T34 — Outreach drafts**: short-form copy for LinkedIn / HN / Twitter so the reader lands on this README with context.
+- **M4 Kaggle T4 re-run**: extend every measured table to Krikri-8B and Meltemi-7B at the same (scheme × n_ctx) grid, plus add the Triton `triton_fused` row to `docs/kernel_bench.md`.
+- **Throughput sweep (T27, optional)**: batch=1 vs batch=16 on T4 — closes the last gap in the systems story.
+
 ## Contributing
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for workflow, commit conventions, and
