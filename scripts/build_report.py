@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import sys
 from collections import defaultdict
 from datetime import UTC, datetime
@@ -29,6 +30,24 @@ from pathlib import Path
 from typing import Any
 
 from greekkv.tokenization.fertility import bootstrap_mean_ci
+
+
+def _generated_at() -> str:
+    """ISO-8601 build timestamp.
+
+    Honours the reproducible-builds ``SOURCE_DATE_EPOCH`` convention so
+    ``make verify-reproduce`` can diff successive runs without the
+    ``generated_at`` field constantly tripping it. Falls back to
+    ``datetime.now(UTC)`` when the env var is not set.
+    """
+    raw = os.environ.get("SOURCE_DATE_EPOCH")
+    if raw is None:
+        return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        ts = int(raw)
+    except ValueError as e:
+        raise SystemExit(f"invalid SOURCE_DATE_EPOCH={raw!r}: {e}") from e
+    return datetime.fromtimestamp(ts, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -407,7 +426,7 @@ def build_planner_data() -> dict:
 
     return {
         "schema_version": 2,
-        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": _generated_at(),
         "models": sorted({m["model"] for m in measurements}),
         "schemes": sorted({m["scheme"] for m in measurements}),
         "n_ctx_grid": sorted({m["n_ctx"] for m in measurements}),
