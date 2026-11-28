@@ -57,13 +57,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          args=(
+            dist/*.whl
+            dist/*.tar.gz
+            docs/RESULTS.md
+            docs/capacity.md
+            docs/systems_profile.md
+            docs/kernel_bench.md
+            docs/dashboard.md
+          )
+          # Attach the technical report if it exists (added in T32).
+          [ -f docs/report.pdf ] && args+=(docs/report.pdf)
+          [ -f docs/report.md ]  && args+=(docs/report.md)
           gh release create "${{ steps.tag.outputs.tag }}" \
             --title "${{ steps.tag.outputs.tag }}" \
             --notes-file "${{ steps.tag.outputs.notes }}" \
-            dist/*.whl \
-            dist/*.tar.gz \
-            docs/RESULTS.md \
-            docs/capacity.md \
-            docs/systems_profile.md \
-            docs/kernel_bench.md \
-            docs/dashboard.md
+            "${args[@]}"

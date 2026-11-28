@@ -46,6 +46,9 @@ dev = [
     "ruff>=0.6",
     "pre-commit>=3.7",
 ]
+report = [
+    "markdown-pdf>=1.14",
+]
 
 [project.urls]
 Repository = "https://github.com/georgebon5/greekkv"

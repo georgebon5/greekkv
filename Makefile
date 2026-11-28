@@ -1,4 +1,4 @@
-.PHONY: help install check lint fmt test clean reproduce verify-reproduce release
+.PHONY: help install check lint fmt test clean reproduce verify-reproduce release report-pdf
 
 PY ?= python3
 # Frozen epoch used by verify-reproduce. Any valid Unix timestamp works;
@@ -16,6 +16,7 @@ help:
 	@echo "  reproduce          regenerate figures + docs/RESULTS.md from committed results"
 	@echo "  verify-reproduce   run reproduce twice and fail if output drifts"
 	@echo "  release            pre-flight: pyproject/CHANGELOG/notes in sync + idempotent"
+	@echo "  report-pdf         render docs/report.md → docs/report.pdf (markdown-pdf)"
 	@echo "  clean              remove caches and build artifacts"
 
 install:
@@ -75,6 +76,9 @@ release:
 	echo "✓ pyproject, planner, CHANGELOG, release notes all point at $$VER"
 	@$(MAKE) --no-print-directory verify-reproduce
 	@echo "✓ release pre-flight passed — safe to 'git tag v$$(grep -E '^version = ' pyproject.toml | head -1 | sed -E 's/.*\"([^\"]+)\".*/\1/') && git push --tags'"
+
+report-pdf:
+	$(PY) scripts/build_report_pdf.py
 
 clean:
 	rm -rf build dist *.egg-info .pytest_cache .ruff_cache .mypy_cache
