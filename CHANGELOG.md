@@ -9,6 +9,13 @@ discussion path stays one click away.
 
 ## [Unreleased]
 
+### Added
+- **Technical report** (#32): standalone 6-section write-up at
+  `docs/report.md` with a committed `docs/report.pdf` (rendered via
+  the pure-Python `markdown-pdf` package). `make report-pdf`
+  regenerates it; `.github/workflows/release.yml` attaches both files
+  when they exist.
+
 Tracking M4 Kaggle T4 re-run (Krikri / Meltemi quality cells),
 `triton_fused` kernel timings, and the follow-ups listed in
 [`README.md`](README.md) **Roadmap after v0.1.0**.
