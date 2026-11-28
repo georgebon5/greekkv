@@ -1,4 +1,4 @@
-.PHONY: help install check lint fmt test clean reproduce verify-reproduce
+.PHONY: help install check lint fmt test clean reproduce verify-reproduce release
 
 PY ?= python3
 # Frozen epoch used by verify-reproduce. Any valid Unix timestamp works;
@@ -15,6 +15,7 @@ help:
 	@echo "  test               pytest"
 	@echo "  reproduce          regenerate figures + docs/RESULTS.md from committed results"
 	@echo "  verify-reproduce   run reproduce twice and fail if output drifts"
+	@echo "  release            pre-flight: pyproject/CHANGELOG/notes in sync + idempotent"
 	@echo "  clean              remove caches and build artifacts"
 
 install:
@@ -57,6 +58,23 @@ verify-reproduce:
 		|| (echo "✗ planner/public/data.json drifted between runs"; exit 1)
 	@rm -f /tmp/greekkv-results.md.first /tmp/greekkv-data.json.first
 	@echo "✓ reproduce is idempotent"
+
+# Pre-flight gate for a tagged release. Verifies that pyproject.toml,
+# planner/package.json, CHANGELOG.md, and docs/RELEASE_NOTES_<ver>.md
+# all point at the same version. The release.yml workflow is what
+# actually creates the GitHub release once the tag is pushed.
+release:
+	@VER=$$(grep -E '^version = ' pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/'); \
+	echo "detected version: $$VER"; \
+	grep -q "\"version\": \"$$VER\"" planner/package.json \
+		|| (echo "✗ planner/package.json version mismatch"; exit 1); \
+	grep -q "^## \[$$VER\]" CHANGELOG.md \
+		|| (echo "✗ CHANGELOG.md missing entry for $$VER"; exit 1); \
+	test -f "docs/RELEASE_NOTES_v$$VER.md" \
+		|| (echo "✗ missing docs/RELEASE_NOTES_v$$VER.md"; exit 1); \
+	echo "✓ pyproject, planner, CHANGELOG, release notes all point at $$VER"
+	@$(MAKE) --no-print-directory verify-reproduce
+	@echo "✓ release pre-flight passed — safe to 'git tag v$$(grep -E '^version = ' pyproject.toml | head -1 | sed -E 's/.*\"([^\"]+)\".*/\1/') && git push --tags'"
 
 clean:
 	rm -rf build dist *.egg-info .pytest_cache .ruff_cache .mypy_cache
