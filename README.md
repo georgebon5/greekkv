@@ -13,17 +13,39 @@
 
 Status: **v0.1.0-rc** — M1–M5 complete and measured end-to-end on a single model. M6 (release + report) is in flight. The capacity model, planner UI, and dashboard are usable today.
 
+## Headline results (`Qwen/Qwen2.5-0.5B`, 16 GiB VRAM)
+
+All numbers are measured and traceable to committed JSONL under `results/`. CIs are 95% bootstrap on the measured cell (1000 resamples, seed = 0). The three columns below collapse `docs/RESULTS.md`, `docs/capacity.md`, and `docs/systems_profile.md` into the one row-per-scheme summary used throughout the UI.
+
+| Scheme | PPL @ n_ctx=1024 | top-1 agree vs FP16 | decode ms/tok | users @ 16 GiB | vs FP16 |
+|---|---:|---:|---:|---:|---:|
+| `fp16` (baseline) | **4.15** | 1.00 (—) | 15.4 | 1,232 | 1.00× |
+| `int8-fakequant` | 5.16 | 0.81 (0.78, 0.84) | 6.0 | 2,390 | **1.94×** |
+| `int8-kivi` | **5.16** | 0.80 (0.77, 0.83) | **5.3** | 2,314 | **1.88×** |
+| `int4-fakequant` | 22.2 | 0.22 (0.19, 0.25) | ⚠ **139.6** | 4,640 | 3.77× |
+| `int4-kivi` | 35.5 | 0.18 (0.15, 0.21) | 5.9 | 4,229 | 3.43× |
+| `eviction-sink` | 12 323 | 0.02 (0.01, 0.04) | 5.0 | 35,061 | 28.5× |
+
+Reading the row-by-row story:
+
+- **INT8 (either variant) is free quality-wise** and buys ~1.9× capacity. The 8-bit tax shows up in the second decimal.
+- **INT4 is the loud trap**: 23× decode-latency hit for `int4-fakequant` is the T23 architectural finding, not measurement noise. KIVI's residual window dodges that, but perplexity at 4 bits still degrades beyond a usable threshold on this model.
+- **`eviction-sink` is a floor, not a competitor**: enormous capacity, but PPL = 12k and top-1 agreement collapses to 2% — effectively guessing.
+- **Krikri / Meltemi are planned but not yet measured** on this grid; they appear in the planner UI with `estimated` tags and blank quality cells until the M4 Kaggle T4 re-run commits the rows.
+
+Reproduce every number: `make reproduce && greekkv-capacity --model Qwen/Qwen2.5-0.5B --vram-gb 16 --n-ctx 1024 --all`.
+
 ## Planned deliverables
 
-| Milestone | Scope |
-|-----------|-------|
-| **M0 — Foundation** | Repo, CI, configs, contribution scaffolding |
-| **M1 — Greek tokenization & KV cost** | Tokenizer fertility, KV calculator, Greek-vs-English figure |
-| **M2 — Quantization library** | Primitives, fake-quant cache, KIVI-style cache, baselines |
-| **M3 — Evaluation** | Perplexity, Greek benchmarks, needle, fidelity metrics |
-| **M4 — Systems** | Memory/latency profiler, Triton kernel, C++ cross-contribution |
-| **M5 — Product** | Capacity CLI, planner web app, results dashboard |
-| **M6 — Packaging & outreach** | README, technical report, release, outreach drafts |
+| Milestone | Scope | Status |
+|-----------|-------|:-:|
+| M0 — Foundation | Repo, CI, configs, contribution scaffolding | ✅ |
+| M1 — Greek tokenization & KV cost | Tokenizer fertility, KV calculator, Greek-vs-English figure | ✅ |
+| M2 — Quantization library | Primitives, fake-quant cache, KIVI-style cache, baselines | ✅ |
+| M3 — Evaluation | Perplexity, Greek benchmarks, needle, fidelity metrics | ✅ |
+| M4 — Systems | Memory/latency profiler, Triton kernel, C++ cross-contribution | ✅ |
+| M5 — Product | Capacity CLI, planner web app, results dashboard | ✅ |
+| M6 — Packaging & outreach | README, technical report, release, outreach drafts | in flight |
 
 Full task list lives in [GitHub Issues](https://github.com/georgebon5/greekkv/issues) (one issue per task, grouped by milestone).
 
