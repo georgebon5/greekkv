@@ -88,13 +88,18 @@ Rows tagged `measured` come from the T17 / T23 JSONL; `estimated` rows have no c
 
 > **Note on Pages deployment:** The Pages workflow may not have run yet due to the same account-level Actions lock documented in [`docs/DECISIONS.md`](docs/DECISIONS.md) (ADR-0001). `cd planner && npm ci && npm run build && npm run preview` reproduces the deployed app locally.
 
-## Reproducibility contract
+## Measured vs estimated
 
-Every number in this repo must be traceable to:
-1. A file under `results/` committed to git, and
-2. The code + config that produced it.
+Every row, chart, and CLI line in this project carries one of two tags. The distinction is enforced by the code (`CapacityResult.source`, `pickMeasurement`, dashboard tooltips) — nothing silently crosses the line.
 
-Any result from larger hardware than free tiers (Kaggle T4/P100, Colab T4) is labelled **estimate**, never **measurement**.
+- **`measured`** — the number came directly from a committed JSONL row under `results/`. The code + config that produced it is in the repo (`experiments/*.py`, `configs/*.yaml`, `scripts/run_sweep.py`). CIs are 95% bootstrap on that cell with `seed = 0`, 1000 resamples. If a cell isn't in the JSONL, it isn't measured — the row shows `—`, not an interpolation.
+- **`estimated`** — the hardware arithmetic (`weights_bytes`, `kv_bytes`, capacity) is still exact; it's a closed-form function of the model config. But the quality and latency columns (`PPL`, `ms/tok`) are unknown for this `(model, scheme, n_ctx)` triple and are printed blank, never inferred.
+
+What this means in practice:
+
+- **Measured today:** `Qwen/Qwen2.5-0.5B` across 6 schemes × 3 context lengths (256 / 512 / 1024) for PPL (T17), fidelity (T20), decode latency (T23), and decode kernel timing (T25).
+- **Estimated today:** everything else — Krikri / Meltemi quality cells, longer context lengths, and larger models all show up with the hardware number live and the quality column blank.
+- **Reproducibility contract:** every committed number must be traceable to (1) a file under `results/`, and (2) the code + config that produced it. Any result from hardware above free tiers (Kaggle T4 / P100, Colab T4) is labelled `estimate`, never `measurement`. `make verify-reproduce` enforces this: a two-pass run with a frozen `SOURCE_DATE_EPOCH` and a diff gate means the committed `docs/RESULTS.md` and `planner/public/data.json` cannot drift from their JSONL sources.
 
 ## Contributing
 
