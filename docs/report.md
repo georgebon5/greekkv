@@ -149,3 +149,52 @@ Two reads:
 
 - **int4-fakequant is a loud outlier** — 23× slower than everything else. §5 explains the architectural cause.
 - **Capacity scales roughly as expected**: int8 ≈ 2× FP16, int4 ≈ 4× FP16. KIVI pays a few per-mille for its FP16 residual window; eviction-sink is the only scheme whose cache does not grow with `n_ctx` and therefore its capacity number is bounded by the overhead, not the cache.
+
+## 5. Findings
+
+### F1 — INT8 is practically free
+
+`int8-kivi` and `int8-fakequant` both land at **PPL = 5.16 on n_ctx = 1024** against the FP16 baseline of 4.15 — a ~24% relative penalty on absolute perplexity, but only ~2 percentage points of top-1 argmax disagreement with FP16. `int8-kivi` additionally comes in at **5.3 ms/tok** vs the baseline's 15.4, because it quantizes less (only the evicted tail), and its capacity sits at **1.88× FP16** at `n_ctx = 1024`. The headline recommendation out of this release is "turn on int8-kivi unless you have a specific reason not to."
+
+### F2 — INT4 fake-quant is a 23× decode trap on CPU
+
+`int4-fakequant` serves 3.77× more users per GiB than FP16 on paper but decodes at **139.6 ms/tok** — 23× slower than every other scheme. The cause is architectural, not measurement noise. The T23 profiler traced it to the full quantize→dequantize round-trip firing on every layer at every decode step:
+
+- `FakeQuantCache.update()` does one `quantize` + one `dequantize` per new K/V row per layer.
+- At 4 bits that includes `pack_int4` + `unpack_int4` bit-ops and a reshape through per-group scales — tiny-tensor operations that hit the Python / torch op dispatcher 24 layers × 2 tensors × 2 ops = ~96 times per decode step.
+- On CPU, dispatcher overhead dominates. `int8-fakequant` escapes this because there is no bit-packing round trip at byte-aligned precisions.
+- **KIVI's residual window is what dodges this bullet.** Fresh tokens live in FP16; quantization only fires on eviction, which at `n_ctx ≤ 4096` and a 36-token window is rare. That is why `int4-kivi` decodes at ~6 ms/tok while still writing int4 bytes to the evicted tail.
+
+The T25 kernel benchmark shows the same shape at the micro-level: the unfused reference pays the dequant cost per call; the T24 Triton fused kernel is designed to amortize that inside a single GPU launch, and the T26 NEON path does the same on AArch64 CPUs. CPU numbers in this report would compress visibly on a GPU re-run — see §6.
+
+### F3 — Eviction-sink is a floor, not a competitor
+
+`eviction-sink` serves 28.5× more users than FP16 at `n_ctx = 1024`, but its perplexity on Greek Wikipedia is **12 323** and top-1 agreement with FP16 is **0.02** — effectively random. We keep it in the measured grid so the planner UI has a defensible lower bound; no downstream reader should treat it as an INT8 / INT4 alternative.
+
+### F4 — The Greek tokenizer gap is load-bearing
+
+The 4.38× fertility gap on Qwen2.5-7B's English-centric tokenizer (§4.1) moves the absolute MB numbers for every scheme in the capacity model. On Krikri's Greek-aware tokenizer the same document costs 20% more KV than English; on Qwen's it costs 340% more. Any Greek-serving deployment that picks its tokenizer badly pays an INT8-sized tax before quantization gets to say anything. This is the one finding in the project that is independent of the cache scheme and still deployable today.
+
+## 6. Limitations and what I'd do with production hardware
+
+### What this report *cannot* say
+
+- **One measured model.** Every PPL / latency / fidelity cell uses `Qwen/Qwen2.5-0.5B`. The capacity model and the planner UI expose Krikri-8B / Meltemi-7B / Qwen2.5-7B configs, but their quality columns stay blank (`source = estimated`) until a GPU run commits JSONL rows for them.
+- **Context grid stops at `n_ctx = 1024`.** Capacity extrapolates in closed form, but perplexity / latency past 1024 are **unknown**, and the dashboard refuses to draw them rather than interpolate.
+- **CPU host.** All measured latency numbers are CPU — specifically Apple Silicon. The T23 int4-fakequant outlier is a CPU-dispatch finding; on a T4 the dispatcher overhead compresses by an order of magnitude and the four-bit variant may close the gap entirely (or not — this is a prediction, not a measurement).
+- **Random tokens for the profiler.** T23 and T25 time attention against random `[H, D]` queries and `[H_kv, N, D]` caches. This is fair for *shape* dependencies but blind to content-driven effects (outlier channels, positional biases).
+- **Scope is PPL + fidelity + needle.** No RLHF-era chat eval, no HumanEval-style generation benchmark, no long-form coherence test.
+
+### What I'd do with ~$200 of T4 time
+
+Three experiments, in priority order, that would retire the biggest open questions:
+
+1. **Krikri + Meltemi full grid.** Rerun T17 (PPL), T20 (fidelity), T23 (profile) on Krikri-8B and Meltemi-7B across `n_ctx ∈ {256, 1024, 4096}` for all six schemes. Expected cost: ~6 hours on a T4. This lands the measured quality columns for the planner's Greek-centric rows, which is what everyone who tried the UI asked for.
+2. **Triton kernel timing on real shapes.** Run `experiments/kernel_benchmark.py` on the T4, three `N_ctx` values, 30 iterations. Expected cost: ~5 minutes. Fills the one blank row in `docs/kernel_bench.md` and quantifies how much of the int4-fakequant gap is architectural vs CPU-specific.
+3. **Context extrapolation to 8 k / 16 k.** Rerun T17 at `n_ctx ∈ {2048, 4096, 8192}` for the two int8 variants and FP16 only (the only cells reviewers actually care about). Expected cost: ~45 minutes. Settles whether the 24% perplexity penalty at 1024 is stable or widens — this is the one trend the planner UI cannot answer by extrapolation.
+
+### What I would *not* rush to spend on
+
+- Tuning the KIVI residual window beyond 36 tokens. The scaffolding allows it (`CapacityInputs.scheme_specs` overrides) but the measurement budget is better spent on model coverage.
+- Chasing INT2. The fidelity floor already breaks at INT4 on this model; INT2 would be a floor-of-the-floor measurement and the engineering cost exceeds the information gain.
+- A full RLHF-era chat eval harness. Different project; the capacity model does not care about it.
