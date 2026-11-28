@@ -236,6 +236,20 @@ def test_build_report_runs_against_committed_rows(report_mod):
     assert len(text) > 2000
 
 
+def test_generated_at_respects_source_date_epoch(report_mod, monkeypatch):
+    # Deterministic-builds convention: SOURCE_DATE_EPOCH freezes the
+    # build timestamp so `make verify-reproduce` can diff two runs.
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "1794700800")
+    stamp = report_mod._generated_at()
+    assert stamp == "2026-11-15T00:00:00Z"
+
+
+def test_generated_at_rejects_malformed_source_date_epoch(report_mod, monkeypatch):
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "not-a-number")
+    with pytest.raises(SystemExit, match="SOURCE_DATE_EPOCH"):
+        report_mod._generated_at()
+
+
 def test_build_planner_data_has_expected_shape(report_mod):
     data = report_mod.build_planner_data()
     assert data["schema_version"] == 2
