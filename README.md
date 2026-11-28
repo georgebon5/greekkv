@@ -1,14 +1,17 @@
 # GreekKV
 
 [![CI](https://github.com/georgebon5/greekkv/actions/workflows/ci.yml/badge.svg)](https://github.com/georgebon5/greekkv/actions/workflows/ci.yml)
+[![Pages](https://github.com/georgebon5/greekkv/actions/workflows/pages.yml/badge.svg)](https://github.com/georgebon5/greekkv/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![Planner](https://img.shields.io/badge/planner-live-brightgreen)](https://georgebon5.github.io/greekkv/)
+[![Reproducible](https://img.shields.io/badge/reproducible-make%20verify--reproduce-blue)](Makefile)
 
-**Open-source study + toolkit measuring what KV-cache quantization costs in quality and gains in serving capacity for Greek-language LLM workloads.**
+**At fixed GPU memory, `int8-kivi` serves ~1.9× more concurrent Greek users than FP16 at the same perplexity (5.16, Qwen2.5-0.5B, n_ctx=1024)** and at marginally lower decode latency (5.28 vs 6.03 ms/tok). INT4 pushes that to ~3.8× users on paper but blows up decode latency to ~140 ms/tok under the vanilla fake-quant cache; KIVI's residual window avoids that 23× slowdown while keeping the extra capacity. Every number in that sentence is measured on `Qwen/Qwen2.5-0.5B` and committed as JSONL under `results/` — `greekkv-capacity --measured` prints the full grid, and the live dashboard at [`georgebon5.github.io/greekkv/`](https://georgebon5.github.io/greekkv/) plots it.
 
-> Headline question: *At fixed GPU memory, how many more concurrent users can a Greek LLM serve if the KV cache is quantized to INT8/INT4, and what does that cost in Greek-language quality?*
+> **Headline question.** At fixed GPU memory, how many more concurrent users can a Greek LLM serve if the KV cache is quantized to INT8 / INT4, and what does that cost in Greek-language quality?
 
-Status: **pre-alpha** — scaffolding in place; first measured results land in M1–M3.
+Status: **v0.1.0-rc** — M1–M5 complete and measured end-to-end on a single model. M6 (release + report) is in flight. The capacity model, planner UI, and dashboard are usable today.
 
 ## Planned deliverables
 
